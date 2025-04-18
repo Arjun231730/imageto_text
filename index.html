@@ -3,117 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enhanced Image to Text Converter</title>
+  <title>Enhanced Tabular OCR</title>
+  <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background-color: #f4f4f9;
+      padding: 20px;
+      background-color: #f8f9fa;
     }
-
     h1 {
       color: #333;
     }
-
-    input[type="file"] {
-      margin: 20px 0;
+    canvas {
+      display: none;
     }
-
     #output {
       margin-top: 20px;
       padding: 10px;
+      background: #fff;
       border: 1px solid #ccc;
       border-radius: 5px;
-      background: #fff;
-      width: 80%;
-      max-width: 600px;
+      max-width: 800px;
       white-space: pre-wrap;
     }
-
-    canvas {
-      display: none; /* Hide the canvas */
-    }
-
     .loading {
-      color: #555;
       font-style: italic;
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <h1>Enhanced Image to Text Converter</h1>
+  <h1>Enhanced Tabular OCR</h1>
   <input type="file" id="imageInput" accept="image/*">
   <canvas id="canvas"></canvas>
   <div id="output">Text will appear here...</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script>
     const imageInput = document.getElementById('imageInput');
-    const outputDiv = document.getElementById('output');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const outputDiv = document.getElementById('output');
 
-    imageInput.addEventListener('change', async (event) => {
+    function preprocessImage(img) {
+      // Convert image to grayscale, increase contrast
+      const src = cv.imread(img);
+      const gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+
+      // Apply thresholding to improve contrast
+      const thresh = new cv.Mat();
+      cv.threshold(gray, thresh, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+
+      // Denoise the image
+      const denoised = new cv.Mat();
+      cv.medianBlur(thresh, denoised, 3);
+
+      // Save processed image to canvas
+      cv.imshow('canvas', denoised);
+
+      // Clean up memory
+      src.delete(); gray.delete(); thresh.delete(); denoised.delete();
+    }
+
+    imageInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (!file) {
         outputDiv.textContent = 'No file selected.';
         return;
       }
 
-      // Display loading message
-      outputDiv.textContent = 'Processing image... Please wait.';
-      outputDiv.classList.add('loading');
+      const img = new Image();
+      img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
 
-      try {
-        // Load the image onto the canvas for preprocessing
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
+        // Preprocess the image
+        preprocessImage(canvas);
 
-        img.onload = async () => {
-          // Set canvas size to image dimensions
-          canvas.width = img.width;
-          canvas.height = img.height;
+        // Extract preprocessed image from canvas
+        const processedImg = canvas.toDataURL();
 
-          // Draw the image on the canvas
-          ctx.drawImage(img, 0, 0);
+        // Display loading message
+        outputDiv.textContent = 'Processing image... Please wait.';
+        outputDiv.classList.add('loading');
 
-          // Preprocessing: Enhance contrast and grayscale
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            const avg = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2]; // Grayscale formula
-            const enhanced = avg > 128 ? 255 : 0; // Binarization for contrast
-            data[i] = enhanced; // Red
-            data[i + 1] = enhanced; // Green
-            data[i + 2] = enhanced; // Blue
-          }
-          ctx.putImageData(imageData, 0, 0);
-
-          // Extract the preprocessed image as a blob
-          const processedImg = canvas.toDataURL();
-
-          // Use Tesseract.js to recognize text with specific configurations
+        try {
+          // Perform OCR using Tesseract.js
           const result = await Tesseract.recognize(processedImg, 'eng', {
             logger: (info) => console.log(info), // Logs progress to console
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:/@.,-', // Whitelist characters
-            psm: 6, // Assume a single uniform block of text
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:/@.,-', // Restrict characters
+            psm: 6, // Single uniform block of text
           });
 
           // Display recognized text
           outputDiv.textContent = result.data.text;
-        };
-      } catch (error) {
-        outputDiv.textContent = 'An error occurred while processing the image.';
-        console.error(error);
-      } finally {
-        outputDiv.classList.remove('loading');
-      }
+        } catch (error) {
+          outputDiv.textContent = 'An error occurred while processing the image.';
+          console.error(error);
+        } finally {
+          outputDiv.classList.remove('loading');
+        }
+      };
+
+      img.src = URL.createObjectURL(file);
     });
   </script>
 </body>
