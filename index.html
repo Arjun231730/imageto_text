@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image to Text Converter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f4f4f9;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    input[type="file"] {
+      margin: 20px 0;
+    }
+
+    #output {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #fff;
+      width: 80%;
+      max-width: 600px;
+      white-space: pre-wrap;
+    }
+
+    .loading {
+      color: #555;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>Image to Text Converter</h1>
+  <input type="file" id="imageInput" accept="image/*">
+  <div id="output">Text will appear here...</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const outputDiv = document.getElementById('output');
+
+    imageInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) {
+        outputDiv.textContent = 'No file selected.';
+        return;
+      }
+
+      // Display loading message
+      outputDiv.textContent = 'Processing image... Please wait.';
+      outputDiv.classList.add('loading');
+
+      try {
+        // Use Tesseract.js to recognize text
+        const result = await Tesseract.recognize(file, 'eng', {
+          logger: (info) => console.log(info), // Logs progress to console
+        });
+
+        // Display recognized text
+        outputDiv.textContent = result.data.text;
+      } catch (error) {
+        outputDiv.textContent = 'An error occurred while processing the image.';
+        console.error(error);
+      } finally {
+        outputDiv.classList.remove('loading');
+      }
+    });
+  </script>
+</body>
+</html>
