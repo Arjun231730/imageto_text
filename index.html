@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enhanced Tabular OCR</title>
-  <script async src="https://docs.opencv.org/4.x/opencv.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <title>Simple OCR</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -15,9 +13,6 @@
     }
     h1 {
       color: #333;
-    }
-    canvas {
-      display: none;
     }
     #output {
       margin-top: 20px;
@@ -35,80 +30,40 @@
   </style>
 </head>
 <body>
-  <h1>Enhanced Tabular OCR</h1>
+  <h1>Image to Text</h1>
   <input type="file" id="imageInput" accept="image/*">
-  <canvas id="canvas"></canvas>
   <div id="output">Text will appear here...</div>
 
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script>
     const imageInput = document.getElementById('imageInput');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
     const outputDiv = document.getElementById('output');
 
-    function preprocessImage(img) {
-      // Convert image to grayscale, increase contrast
-      const src = cv.imread(img);
-      const gray = new cv.Mat();
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-
-      // Apply thresholding to improve contrast
-      const thresh = new cv.Mat();
-      cv.threshold(gray, thresh, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
-
-      // Denoise the image
-      const denoised = new cv.Mat();
-      cv.medianBlur(thresh, denoised, 3);
-
-      // Save processed image to canvas
-      cv.imshow('canvas', denoised);
-
-      // Clean up memory
-      src.delete(); gray.delete(); thresh.delete(); denoised.delete();
-    }
-
-    imageInput.addEventListener('change', (event) => {
+    imageInput.addEventListener('change', async (event) => {
       const file = event.target.files[0];
       if (!file) {
         outputDiv.textContent = 'No file selected.';
         return;
       }
 
-      const img = new Image();
-      img.onload = async () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+      // Display loading message
+      outputDiv.textContent = 'Processing image... Please wait.';
+      outputDiv.classList.add('loading');
 
-        // Preprocess the image
-        preprocessImage(canvas);
+      try {
+        // Use Tesseract.js to recognize text
+        const result = await Tesseract.recognize(file, 'eng', {
+          logger: (info) => console.log(info), // Logs progress to console
+        });
 
-        // Extract preprocessed image from canvas
-        const processedImg = canvas.toDataURL();
-
-        // Display loading message
-        outputDiv.textContent = 'Processing image... Please wait.';
-        outputDiv.classList.add('loading');
-
-        try {
-          // Perform OCR using Tesseract.js
-          const result = await Tesseract.recognize(processedImg, 'eng', {
-            logger: (info) => console.log(info), // Logs progress to console
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:/@.,-', // Restrict characters
-            psm: 6, // Single uniform block of text
-          });
-
-          // Display recognized text
-          outputDiv.textContent = result.data.text;
-        } catch (error) {
-          outputDiv.textContent = 'An error occurred while processing the image.';
-          console.error(error);
-        } finally {
-          outputDiv.classList.remove('loading');
-        }
-      };
-
-      img.src = URL.createObjectURL(file);
+        // Display recognized text
+        outputDiv.textContent = result.data.text;
+      } catch (error) {
+        outputDiv.textContent = 'An error occurred while processing the image.';
+        console.error(error);
+      } finally {
+        outputDiv.classList.remove('loading');
+      }
     });
   </script>
 </body>
