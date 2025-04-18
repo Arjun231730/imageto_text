@@ -3,17 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple OCR</title>
+  <title>Image to Text Extractor</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       background-color: #f8f9fa;
     }
+
     h1 {
       color: #333;
     }
+
+    input[type="file"] {
+      margin: 20px 0;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      color: white;
+      background-color: #007bff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
     #output {
       margin-top: 20px;
       padding: 10px;
@@ -23,6 +47,7 @@
       max-width: 800px;
       white-space: pre-wrap;
     }
+
     .loading {
       font-style: italic;
       color: #888;
@@ -30,19 +55,36 @@
   </style>
 </head>
 <body>
-  <h1>Image to Text</h1>
+  <h1>Image to Text Extractor</h1>
   <input type="file" id="imageInput" accept="image/*">
+  <button id="extractButton" disabled>Extract Text</button>
   <div id="output">Text will appear here...</div>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script>
     const imageInput = document.getElementById('imageInput');
+    const extractButton = document.getElementById('extractButton');
     const outputDiv = document.getElementById('output');
+    let uploadedImage = null;
 
-    imageInput.addEventListener('change', async (event) => {
+    // Enable the extract button after an image is uploaded
+    imageInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
-      if (!file) {
-        outputDiv.textContent = 'No file selected.';
+      if (file) {
+        uploadedImage = file;
+        extractButton.disabled = false;
+        outputDiv.textContent = 'Image uploaded. Click "Extract Text" to process.';
+      } else {
+        uploadedImage = null;
+        extractButton.disabled = true;
+        outputDiv.textContent = 'No image selected.';
+      }
+    });
+
+    // Extract text on button click
+    extractButton.addEventListener('click', async () => {
+      if (!uploadedImage) {
+        outputDiv.textContent = 'Please upload an image first.';
         return;
       }
 
@@ -52,7 +94,7 @@
 
       try {
         // Use Tesseract.js to recognize text
-        const result = await Tesseract.recognize(file, 'eng', {
+        const result = await Tesseract.recognize(uploadedImage, 'eng', {
           logger: (info) => console.log(info), // Logs progress to console
         });
 
